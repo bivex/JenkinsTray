@@ -1,5 +1,12 @@
 # JenkinsTray
 
+<img width="332" height="396" alt="image" src="https://github.com/user-attachments/assets/ceeab353-ba7c-41fd-b951-480387ef64b1" />
+
+<img width="454" height="504" alt="image" src="https://github.com/user-attachments/assets/7cb54f9f-1ac4-4544-9b9f-2f51518e18c4" />
+
+<img width="1247" height="1011" alt="image" src="https://github.com/user-attachments/assets/d592a875-8a6b-40c1-ab35-695d130d3a06" />
+
+
 A macOS application for monitoring Jenkins build status using Clean Architecture principles.
 
 ## Overview
