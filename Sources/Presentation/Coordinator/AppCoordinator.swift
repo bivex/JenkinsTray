@@ -129,7 +129,10 @@ public final class AppCoordinator: ObservableObject {
     }
 
     private func updateRepository(with credentials: JenkinsCredentials) {
-        let buildsRepository = JenkinsBuildsRepository(credentials: credentials)
+        let buildsRepository = JenkinsBuildsRepository(
+            credentials: credentials,
+            jobPath: settings.jobPath
+        )
         self.fetchBuildsUseCase = FetchBuildsUseCase(buildsRepository: buildsRepository)
         self.fetchBuildStagesUseCase = FetchBuildStagesUseCase(buildsRepository: buildsRepository)
         self.refreshDataUseCase = RefreshDataUseCase(fetchBuildsUseCase: fetchBuildsUseCase)
@@ -228,11 +231,24 @@ public final class AppCoordinator: ObservableObject {
 
     func updateSettings(_ newSettings: AppSettings) async {
         do {
+            let jobPathChanged = settings.jobPath != newSettings.jobPath
+
             try await settingsRepository.saveSettings(newSettings)
             settings = newSettings
             #if DEBUG
-            print("[AppCoordinator] Settings updated, refresh interval: \(settings.refreshInterval.displayName)")
+            print("[AppCoordinator] Settings updated, refresh interval: \(settings.refreshInterval.displayName), job path: \(settings.jobPath)")
             #endif
+
+            // If job path changed, update repository with new path
+            if jobPathChanged, let credentials = try? await credentialsRepository.loadCredentials() {
+                #if DEBUG
+                print("[AppCoordinator] Job path changed, updating repository...")
+                #endif
+                updateRepository(with: credentials)
+                // Refresh builds with new job path
+                await loadBuilds()
+            }
+
             setupRefreshTimer()
         } catch {
             self.error = error

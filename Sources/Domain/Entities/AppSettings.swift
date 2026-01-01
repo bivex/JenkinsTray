@@ -20,15 +20,18 @@ public struct AppSettings: Codable, Sendable {
     public let refreshInterval: RefreshInterval
     public let notificationsEnabled: Bool
     public let autoShowPopover: Bool
+    public let jobPath: String
 
     public init(
         refreshInterval: RefreshInterval = .oneMinute,
         notificationsEnabled: Bool = true,
-        autoShowPopover: Bool = true
+        autoShowPopover: Bool = true,
+        jobPath: String = "job/test-app/job/main"
     ) {
         self.refreshInterval = refreshInterval
         self.notificationsEnabled = notificationsEnabled
         self.autoShowPopover = autoShowPopover
+        self.jobPath = jobPath
     }
 }
 

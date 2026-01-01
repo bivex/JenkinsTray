@@ -24,6 +24,7 @@ struct SettingsView: View {
     @State private var jenkinsURL: String
     @State private var username: String
     @State private var apiToken: String
+    @State private var jobPath: String
     @Environment(\.dismiss) private var dismiss
 
     init() {
@@ -33,6 +34,7 @@ struct SettingsView: View {
         _jenkinsURL = State(initialValue: "")
         _username = State(initialValue: "")
         _apiToken = State(initialValue: "")
+        _jobPath = State(initialValue: "job/test-app/job/main")
     }
 
     var body: some View {
@@ -67,11 +69,19 @@ struct SettingsView: View {
                             .textFieldStyle(.roundedBorder)
                             .autocorrectionDisabled()
                     }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Job Path")
+                            .font(.caption)
+                        TextField("job/test-app/job/main", text: $jobPath)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                    }
                 } header: {
                     Text("Jenkins Connection")
                         .font(.headline)
                 } footer: {
-                    Text("Changes to connection settings require re-authentication")
+                    Text("Job path example: job/project-name/job/main")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -127,6 +137,7 @@ struct SettingsView: View {
             selectedInterval = appCoordinator.settings.refreshInterval
             notificationsEnabled = appCoordinator.settings.notificationsEnabled
             autoShowPopover = appCoordinator.settings.autoShowPopover
+            jobPath = appCoordinator.settings.jobPath
 
             // Load current credentials
             Task {
@@ -144,10 +155,13 @@ struct SettingsView: View {
     }
 
     private func saveSettings() {
+        let trimmedJobPath = jobPath.trimmingCharacters(in: .whitespaces)
+
         let newSettings = AppSettings(
             refreshInterval: selectedInterval,
             notificationsEnabled: notificationsEnabled,
-            autoShowPopover: autoShowPopover
+            autoShowPopover: autoShowPopover,
+            jobPath: trimmedJobPath.isEmpty ? "job/test-app/job/main" : trimmedJobPath
         )
 
         Task {
