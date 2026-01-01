@@ -267,6 +267,31 @@ public final class AppCoordinator: ObservableObject {
         }
     }
 
+    // MARK: - Jobs Management
+    func fetchAvailableJobs() async throws -> [String] {
+        guard isAuthenticated else {
+            throw BuildsRepositoryError.authenticationError
+        }
+
+        #if DEBUG
+        print("[AppCoordinator] Fetching available jobs from Jenkins...")
+        #endif
+
+        // Create a temporary repository to fetch jobs list
+        if let credentials = try await credentialsRepository.loadCredentials() {
+            let tempRepository = JenkinsBuildsRepository(credentials: credentials, jobPath: "")
+            let jobs = try await tempRepository.fetchJobsList()
+
+            #if DEBUG
+            print("[AppCoordinator] Found \(jobs.count) jobs")
+            #endif
+
+            return jobs
+        } else {
+            throw BuildsRepositoryError.authenticationError
+        }
+    }
+
     func updateCredentials(_ credentials: JenkinsCredentials) async throws {
         #if DEBUG
         print("[AppCoordinator] Updating credentials...")

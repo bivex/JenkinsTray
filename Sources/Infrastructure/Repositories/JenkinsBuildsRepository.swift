@@ -88,6 +88,68 @@ public final class JenkinsBuildsRepository: BuildsRepository {
             throw BuildsRepositoryError.networkError(error)
         }
     }
+
+    /// Fetch list of available jobs from Jenkins
+    public func fetchJobsList(path: String = "") async throws -> [String] {
+        do {
+            let endpoint = path.isEmpty ? "api/json?tree=jobs[name,url,class,jobs[name,url,class]]" : "\(path)/api/json?tree=jobs[name,url,class,jobs[name,url,class]]"
+
+            #if DEBUG
+            print("[JenkinsBuildsRepository] Fetching jobs from endpoint: \(endpoint)")
+            #endif
+
+            let response: JenkinsJobsListDTO = try await httpClient.get(endpoint)
+
+            #if DEBUG
+            print("[JenkinsBuildsRepository] Response received with \(response.jobs.count) root jobs")
+            #endif
+
+            var jobPaths: [String] = []
+
+            func extractJobPaths(from jobs: [JenkinsJobItemDTO], prefix: String = "") {
+                for job in jobs {
+                    let currentPath = prefix.isEmpty ? "job/\(job.name)" : "\(prefix)/job/\(job.name)"
+
+                    #if DEBUG
+                    print("[JenkinsBuildsRepository] Processing job: \(job.name), class: \(job._class), has sub-jobs: \(job.jobs != nil)")
+                    #endif
+
+                    if let subJobs = job.jobs, !subJobs.isEmpty {
+                        // This is a folder, recurse into it
+                        #if DEBUG
+                        print("[JenkinsBuildsRepository] Recursing into folder: \(currentPath) with \(subJobs.count) sub-jobs")
+                        #endif
+                        extractJobPaths(from: subJobs, prefix: currentPath)
+                    } else {
+                        // This is a job, add it to the list
+                        #if DEBUG
+                        print("[JenkinsBuildsRepository] Adding job path: \(currentPath)")
+                        #endif
+                        jobPaths.append(currentPath)
+                    }
+                }
+            }
+
+            extractJobPaths(from: response.jobs)
+
+            #if DEBUG
+            print("[JenkinsBuildsRepository] Total job paths found: \(jobPaths.count)")
+            print("[JenkinsBuildsRepository] Job paths: \(jobPaths)")
+            #endif
+
+            return jobPaths.sorted()
+        } catch let error as JenkinsHTTPError {
+            #if DEBUG
+            print("[JenkinsBuildsRepository] JenkinsHTTPError: \(error)")
+            #endif
+            throw BuildsRepositoryError.fromJenkinsHTTPError(error)
+        } catch {
+            #if DEBUG
+            print("[JenkinsBuildsRepository] Error: \(error)")
+            #endif
+            throw BuildsRepositoryError.networkError(error)
+        }
+    }
 }
 
 private extension BuildsRepositoryError {

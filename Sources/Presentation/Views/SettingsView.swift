@@ -25,6 +25,11 @@ struct SettingsView: View {
     @State private var username: String
     @State private var apiToken: String
     @State private var jobPath: String
+    @State private var availableJobs: [String] = []
+    @State private var isFetchingJobs = false
+    @State private var showJobPicker = false
+    @State private var errorMessage = ""
+    @State private var showError = false
     @Environment(\.dismiss) private var dismiss
 
     init() {
@@ -73,9 +78,24 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Job Path")
                             .font(.caption)
-                        TextField("job/test-app/job/main", text: $jobPath)
-                            .textFieldStyle(.roundedBorder)
-                            .autocorrectionDisabled()
+                        HStack {
+                            TextField("job/test-app/job/main", text: $jobPath)
+                                .textFieldStyle(.roundedBorder)
+                                .autocorrectionDisabled()
+
+                            Button(action: fetchJobs) {
+                                if isFetchingJobs {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .frame(width: 16, height: 16)
+                                } else {
+                                    Image(systemName: "list.bullet")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .help("Browse available jobs")
+                            .disabled(isFetchingJobs)
+                        }
                     }
                 } header: {
                     Text("Jenkins Connection")
@@ -132,6 +152,14 @@ struct SettingsView: View {
         }
         .padding()
         .frame(width: 450, height: 500)
+        .sheet(isPresented: $showJobPicker) {
+            jobPickerView
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
         .onAppear {
             // Load current settings
             selectedInterval = appCoordinator.settings.refreshInterval
@@ -185,6 +213,69 @@ struct SettingsView: View {
             }
 
             dismiss()
+        }
+    }
+
+    private var jobPickerView: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("Select Job")
+                    .font(.headline)
+                Spacer()
+                Button("Cancel") {
+                    showJobPicker = false
+                }
+            }
+            .padding()
+
+            if availableJobs.isEmpty {
+                Text("No jobs found")
+                    .foregroundColor(.secondary)
+                    .padding()
+            } else {
+                List(availableJobs, id: \.self) { job in
+                    Button(action: {
+                        jobPath = job
+                        showJobPicker = false
+                    }) {
+                        HStack {
+                            Text(job)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if jobPath == job {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(width: 500, height: 400)
+    }
+
+    private func fetchJobs() {
+        isFetchingJobs = true
+
+        Task {
+            do {
+                print("[SettingsView] Fetching jobs...")
+                availableJobs = try await appCoordinator.fetchAvailableJobs()
+                print("[SettingsView] Fetched \(availableJobs.count) jobs: \(availableJobs)")
+
+                if availableJobs.isEmpty {
+                    errorMessage = "No jobs found in Jenkins"
+                    showError = true
+                } else {
+                    showJobPicker = true
+                }
+            } catch {
+                print("[SettingsView] Failed to fetch jobs: \(error)")
+                errorMessage = "Failed to fetch jobs: \(error.localizedDescription)"
+                showError = true
+            }
+            isFetchingJobs = false
         }
     }
 }
